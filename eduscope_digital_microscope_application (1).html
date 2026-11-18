@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="id" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduScope - Mikroskop Digital Interaktif</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        lab: {
+                            900: '#0b1329',
+                            800: '#111c38',
+                            700: '#1c2b4e',
+                            600: '#283c66',
+                            accent: '#10b981',
+                            cyan: '#06b6d4',
+                            warning: '#f59e0b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome & Google Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0b1329; }
+        ::-webkit-scrollbar-thumb { background: #1c2b4e; borderRadius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #283c66; }
+        .canvas-container { touch-action: none; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white !important; color: black !important; }
+        }
+    </style>
+</head>
+<body class="bg-lab-900 text-slate-100 min-h-full flex flex-col select-none antialiased overflow-x-hidden">
+
+    <!-- Header Navigation -->
+    <header class="bg-lab-800 border-b border-lab-700/80 sticky top-0 z-40 px-3 py-2.5 sm:px-6 no-print">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center text-slate-950 font-bold shadow-lg shadow-emerald-500/20">
+                        <i class="fa-solid fa-microscope text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-base sm:text-lg leading-tight tracking-tight bg-gradient-to-r from-slate-100 via-slate-200 to-emerald-400 bg-clip-text text-transparent">
+                            EduScope <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">v2.5</span>
+                        </h1>
+                        <p class="text-[11px] text-slate-400 font-medium">Mikroskop Digital & Platform Lab Biologi</p>
+                    </div>
+                </div>
+
+                <!-- Status Badge -->
+                <div id="connectionStatusBadge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="statusText">Simulator</span>
+                </div>
+            </div>
+
+            <!-- Main Tab Navigation -->
+            <nav class="flex items-center gap-1 bg-lab-900/90 p-1 rounded-xl border border-lab-700/60 w-full sm:w-auto justify-center">
+                <button onclick="switchTab('main')" id="tabMainBtn" class="flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 bg-emerald-600 text-white shadow-md">
+                    <i class="fa-solid fa-sliders"></i> <span>Mikroskop Utama</span>
+                </button>
+                <button onclick="switchTab('gallery')" id="tabGalleryBtn" class="flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-images"></i> <span>Galeri & Laporan</span>
+                    <span id="galleryBadge" class="hidden px-1.5 py-0.2 text-[10px] bg-emerald-500 text-slate-950 rounded-full font-bold">0</span>
+                </button>
+                <button onclick="switchTab('guide')" id="tabGuideBtn" class="flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-book-open"></i> <span>Panduan Praktikum</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- MAIN APP CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-2 sm:p-4 md:p-6 flex flex-col gap-4">
+
+        <!-- TAB 1: MIKROSKOP UTAMA -->
+        <div id="tabMain" class="flex flex-col lg:flex-row gap-4 flex-1">
+
+            <!-- LEFT CONTROL PANEL (Input & Processing) -->
+            <aside class="w-full lg:w-80 flex flex-col gap-3 no-print order-2 lg:order-1">
+
+                <!-- Mode Input Switcher -->
+                <div class="bg-lab-800 rounded-2xl p-3.5 border border-lab-700/70 shadow-lg">
+                    <label class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2.5 flex items-center gap-2">
+                        <i class="fa-solid fa-video text-emerald-400"></i> Sumber Kamera
+                    </label>
+                    <div class="grid grid-cols-3 gap-1.5 bg-lab-900 p-1 rounded-xl border border-lab-700/50">
+                        <button onclick="setCameraMode('sim')" id="srcSimBtn" class="py-2 text-xs font-medium rounded-lg transition text-slate-200 bg-lab-700/80 shadow flex flex-col items-center gap-1">
+                            <i class="fa-solid fa-flask text-sm"></i> Simulator
+                        </button>
+                        <button onclick="setCameraMode('dev')" id="srcDevBtn" class="py-2 text-xs font-medium rounded-lg transition text-slate-400 hover:text-slate-200 flex flex-col items-center gap-1">
+                            <i class="fa-solid fa-camera text-sm"></i> Perangkat
+                        </button>
+                        <button onclick="setCameraMode('esp')" id="srcEspBtn" class="py-2 text-xs font-medium rounded-lg transition text-slate-400 hover:text-slate-200 flex flex-col items-center gap-1">
+                            <i class="fa-solid fa-wifi text-sm"></i> ESP32-CAM
+                        </button>
+                    </div>
+
+                    <!-- Mode Options: SIMULATOR -->
+                    <div id="simOptions" class="mt-3 space-y-2">
+                        <label class="text-[11px] font-medium text-slate-400">Pilih Sampel Preparat:</label>
+                        <select id="sampleSelect" onchange="changeSample(this.value)" class="w-full bg-lab-900 border border-lab-700 rounded-xl px-3 py-2 text-xs font-medium text-slate-200 focus:outline-none focus:border-emerald-500">
+                            <option value="onion">Sel Epidermis Bawang Merah (Allium cepa)</option>
+                            <option value="leaf">Kloroplas & Stomata Daun (Hydrilla)</option>
+                            <option value="bacteria">Bakteri Spirillum & Gram Negatif</option>
+                            <option value="salt">Kristal Garam Dapur (NaCl)</option>
+                            <option value="fiber">Serat Kain Katun & Kertas</option>
+                        </select>
+                    </div>
+
+                    <!-- Mode Options: DEVICE CAMERA -->
+                    <div id="devOptions" class="mt-3 space-y-2 hidden">
+                        <div class="flex items-center justify-between gap-2">
+                            <select id="devDeviceSelect" onchange="switchDeviceCamera(this.value)" class="flex-1 bg-lab-900 border border-lab-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none">
+                                <option value="">Mencari kamera...</option>
+                            </select>
+                            <button onclick="toggleFlipCamera()" class="px-2.5 py-1.5 bg-lab-700 hover:bg-lab-600 rounded-xl text-xs text-slate-200 border border-lab-600" title="Ganti Kamera Depan/Belakang">
+                                <i class="fa-solid fa-camera-rotate"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-between gap-2 pt-1">
+                            <button id="torchBtn" onclick="toggleTorch()" class="flex-1 py-1.5 px-3 bg-lab-900 hover:bg-lab-700 border border-lab-700 rounded-xl text-xs text-slate-300 flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-bolt text-amber-400"></i> Lampu Flash LED
+                            </button>
+                            <select id="devResSelect" onchange="changeResolution(this.value)" class="bg-lab-900 border border-lab-700 rounded-xl px-2 py-1.5 text-xs text-slate-200">
+                                <option value="fhd">1080p FHD</option>
+                                <option value="hd" selected>720p HD</option>
+                                <option value="vga">480p VGA</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Mode Options: ESP32-CAM -->
+                    <div id="espOptions" class="mt-3 space-y-2 hidden">
+                        <label class="text-[11px] font-medium text-slate-400">URL Stream IP ESP32-CAM:</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="espUrlInput" value="http://192.168.4.1/stream" class="flex-1 bg-lab-900 border border-lab-700 rounded-xl px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500">
+                            <button onclick="connectESP32()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-medium shadow">Koneksi</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Image Processing Controls -->
+                <div class="bg-lab-800 rounded-2xl p-3.5 border border-lab-700/70 shadow-lg flex-1 space-y-3.5 overflow-y-auto max-h-[500px]">
+                    <div class="flex items-center justify-between border-b border-lab-700/60 pb-2">
+                        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-cyan-400"></i> Pengolahan Citra
+                        </span>
+                        <button onclick="resetImageFilters()" class="text-[11px] text-slate-400 hover:text-emerald-400 flex items-center gap-1">
+                            <i class="fa-solid fa-rotate-left"></i> Reset
+                        </button>
+                    </div>
+
+                    <!-- Zoom & Focus -->
+                    <div class="space-y-2.5">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-300 font-medium">Digital Zoom</span>
+                                <span id="valZoom" class="font-mono text-emerald-400">10.0x</span>
+                            </div>
+                            <input type="range" id="sliderZoom" min="1" max="100" step="0.5" value="10" oninput="updateFilter('zoom', this.value)" class="w-full accent-emerald-500">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-300 font-medium">Fokus / Sim. Sharpness</span>
+                                <span id="valFocus" class="font-mono text-cyan-400">0 px</span>
+                            </div>
+                            <input type="range" id="sliderFocus" min="0" max="10" step="0.5" value="0" oninput="updateFilter('blur', this.value)" class="w-full accent-cyan-500">
+                        </div>
+                    </div>
+
+                    <!-- Lighting Controls -->
+                    <div class="space-y-2.5 pt-2 border-t border-lab-700/50">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-300 font-medium">Pencahayaan LED (Brightness)</span>
+                                <span id="valBrightness" class="font-mono text-slate-300">100%</span>
+                            </div>
+                            <input type="range" id="sliderBrightness" min="20" max="250" value="100" oninput="updateFilter('brightness', this.value)" class="w-full accent-slate-400">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-300 font-medium">Kontras</span>
+                                <span id="valContrast" class="font-mono text-slate-300">100%</span>
+                            </div>
+                            <input type="range" id="sliderContrast" min="30" max="250" value="100" oninput="updateFilter('contrast', this.value)" class="w-full accent-slate-400">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-300 font-medium">Saturasi Warna</span>
+                                <span id="valSaturate" class="font-mono text-slate-300">100%</span>
+                            </div>
+                            <input type="range" id="sliderSaturate" min="0" max="300" value="100" oninput="updateFilter('saturate', this.value)" class="w-full accent-slate-400">
+                        </div>
+                    </div>
+
+                    <!-- Staining Filters -->
+                    <div class="pt-2 border-t border-lab-700/50">
+                        <label class="text-[11px] font-medium text-slate-400 block mb-1.5">Pewarnaan Biologi (Staining):</label>
+                        <select id="stainSelect" onchange="updateFilter('stain', this.value)" class="w-full bg-lab-900 border border-lab-700 rounded-xl px-3 py-1.5 text-xs text-slate-200">
+                            <option value="none">Normal (Tanpa Pewarna)</option>
+                            <option value="methylene">Methylene Blue (Metilen Biru - Sel)</option>
+                            <option value="eosin">Eosin Pink (Eosin Merah Muda - Jaringan)</option>
+                            <option value="fluo">Fluoresensi Hijau (Fluorescence)</option>
+                            <option value="iodine">Iodine Brown (Yodium / Lugol - Pati)</option>
+                            <option value="mono">Monokrom (B&W High-Contrast)</option>
+                            <option value="invert">Invert / Negative Color</option>
+                        </select>
+                    </div>
+
+                    <!-- Orientation Controls -->
+                    <div class="pt-2 border-t border-lab-700/50 flex items-center justify-between gap-2">
+                        <button onclick="rotateCanvas()" class="flex-1 py-1.5 bg-lab-900 hover:bg-lab-700 border border-lab-700 rounded-xl text-xs text-slate-300 flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-rotate-right text-emerald-400"></i> Putar 90°
+                        </button>
+                        <button onclick="toggleFlip('h')" class="flex-1 py-1.5 bg-lab-900 hover:bg-lab-700 border border-lab-700 rounded-xl text-xs text-slate-300 flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-arrows-left-right text-cyan-400"></i> Flip H
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- CENTER VIEWPORT & CANVAS -->
+            <section class="flex-1 flex flex-col gap-3 order-1 lg:order-2">
+
+                <!-- Main Canvas Card -->
+                <div class="bg-lab-800 rounded-2xl border border-lab-700/80 p-2 sm:p-3 shadow-xl flex flex-col flex-1 relative overflow-hidden">
+
+                    <!-- Canvas Top Bar Tools -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2 px-1">
+                        <!-- Overlay Toggles -->
+                        <div class="flex items-center gap-1 bg-lab-900 p-1 rounded-xl border border-lab-700/60 overflow-x-auto">
+                            <button onclick="toggleOverlay('grid')" id="btnGrid" class="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-border-all"></i> <span class="hidden sm:inline">Grid</span>
+                            </button>
+                            <button onclick="toggleOverlay('crosshair')" id="btnCrosshair" class="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-crosshairs"></i> <span class="hidden sm:inline">Crosshair</span>
+                            </button>
+                            <button onclick="toggleOverlay('scale')" id="btnScale" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-600 text-white flex items-center gap-1.5 transition shadow">
+                                <i class="fa-solid fa-ruler-horizontal"></i> <span>Mikrometer</span>
+                            </button>
+                            <button onclick="toggleOverlay('measure')" id="btnMeasure" class="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-ruler-combined text-amber-400"></i> <span>Ukur Jarak</span>
+                            </button>
+                        </div>
+
+                        <!-- Magnification Badge -->
+                        <div class="flex items-center gap-2">
+                            <div class="px-3 py-1 bg-lab-900 border border-lab-700 rounded-xl text-xs font-mono font-bold text-emerald-400 flex items-center gap-1.5 shadow">
+                                <i class="fa-solid fa-magnifying-glass"></i> <span id="magIndicator">100x Total</span>
+                            </div>
+                            <button onclick="resetCanvasTransform()" class="px-2 py-1 bg-lab-900 hover:bg-lab-700 border border-lab-700 rounded-xl text-xs text-slate-400" title="Reset Posisi & Zoom">
+                                <i class="fa-solid fa-arrows-to-dot"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Interactive Area -->
+                    <div id="canvasViewport" class="relative flex-1 bg-slate-950 rounded-xl border border-lab-700/50 overflow-hidden flex items-center justify-center min-h-[350px] sm:min-h-[480px] canvas-container">
+                        
+                        <canvas id="microscopeCanvas" class="max-w-full max-h-full object-contain cursor-crosshair"></canvas>
+
+                        <!-- Hidden Video Element for Hardware Streams -->
+                        <video id="deviceVideo" class="hidden" autoplay playsinline muted></video>
+                        <img id="espImgStream" class="hidden" crossorigin="anonymous" />
+
+                        <!-- Active Measure Banner -->
+                        <div id="measureBanner" class="hidden absolute top-3 left-1/2 -translate-x-1/2 bg-amber-500/90 text-slate-950 px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-2 animate-bounce">
+                            <i class="fa-solid fa-ruler-combined"></i> Klik & seret pada objek untuk mengukur
+                        </div>
+
+                        <!-- Canvas Watermark / Info Overlay -->
+                        <div class="absolute bottom-2 left-2 pointer-events-none text-[10px] font-mono text-slate-400/80 bg-slate-900/60 px-2 py-1 rounded backdrop-blur">
+                            EduScope DSP | <span id="sampleNameDisplay">Sel Bawang</span> | <span id="measureResultText">0 µm</span>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Action Toolbar (Captures & Recording) -->
+                    <div class="mt-3 flex flex-wrap items-center justify-between gap-3 bg-lab-900 p-2.5 rounded-xl border border-lab-700/60">
+                        <div class="flex items-center gap-2">
+                            <!-- Capture Photo -->
+                            <button onclick="captureSnapshot()" class="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition">
+                                <i class="fa-solid fa-camera text-sm"></i> Ambil Foto
+                            </button>
+
+                            <!-- Video Recording -->
+                            <button id="recBtn" onclick="toggleVideoRecord()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-rose-400 border border-slate-700 font-bold rounded-xl text-xs flex items-center gap-2 transition">
+                                <span id="recDot" class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                                <span id="recBtnText">Rekam Video</span>
+                            </button>
+                        </div>
+
+                        <!-- Options for Photo -->
+                        <div class="flex items-center gap-3 text-xs text-slate-300">
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" id="chkIncludeOverlay" checked class="rounded accent-emerald-500">
+                                <span>Sertakan Overlays & Skala</span>
+                            </label>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </div>
+
+        <!-- TAB 2: GALERI & LAPORAN PRAKTIKUM -->
+        <div id="tabGallery" class="hidden flex-col gap-6">
+
+            <!-- Captured Media Gallery Grid -->
+            <div class="bg-lab-800 rounded-2xl border border-lab-700/80 p-4 sm:p-5 shadow-xl">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-lab-700">
+                    <div>
+                        <h2 class="font-bold text-base text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-images text-emerald-400"></i> Galeri Tangkapan Gambar & Video
+                        </h2>
+                        <p class="text-xs text-slate-400">Kumpulan foto mikro dan rekaman selama sesi praktikum</p>
+                    </div>
+                    <button onclick="clearAllGallery()" class="px-3 py-1.5 text-xs text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl transition">
+                        <i class="fa-solid fa-trash-can"></i> Hapus Semua
+                    </button>
+                </div>
+
+                <div id="galleryGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+                    <!-- Gallery Items dynamically inserted here -->
+                    <div id="emptyGalleryMsg" class="col-span-full py-12 text-center text-slate-500">
+                        <i class="fa-solid fa-box-open text-4xl mb-2 opacity-40"></i>
+                        <p class="text-xs">Belum ada foto atau video yang ditangkap.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lab Report Generator Form -->
+            <div class="bg-lab-800 rounded-2xl border border-lab-700/80 p-4 sm:p-6 shadow-xl">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5 pb-3 border-b border-lab-700">
+                    <div>
+                        <h2 class="font-bold text-base text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-file-signature text-cyan-400"></i> Lembar Laporan Praktikum Sains
+                        </h2>
+                        <p class="text-xs text-slate-400">Lengkapi data laporan dan cetak/export sebagai dokumen resmi</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="generateLabReportPrint()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs flex items-center gap-2 shadow transition">
+                            <i class="fa-solid fa-print"></i> Cetak / Save PDF
+                        </button>
+                    </div>
+                </div>
+
+                <form id="labReportForm" onsubmit="event.preventDefault();" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-300 mb-1 block">Nama Siswa / Peneliti:</label>
+                            <input type="text" id="rptStudentName" placeholder="Contoh: Budi Santoso" class="w-full bg-lab-900 border border-lab-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-300 mb-1 block">Kelas / Kelompok:</label>
+                            <input type="text" id="rptClassGroup" placeholder="Contoh: XI IPA 2 - Kelompok 4" class="w-full bg-lab-900 border border-lab-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-300 mb-1 block">Tanggal Praktikum:</label>
+                            <input type="date" id="rptDate" class="w-full bg-lab-900 border border-lab-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-emerald-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-300 mb-1 block">Judul Objek / Sampel:</label>
+                            <input type="text" id="rptSampleTitle" placeholder="Contoh: Pengamatan Struktur Sel Epidermis Bawang" class="w-full bg-lab-900 border border-lab-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-300 mb-1 block">Tingkat Pembesaran digGunkan:</label>
+                            <input type="text" id="rptMagnification" placeholder="Contoh: 100x Total (Optik + Digital)" class="w-full bg-lab-900 border border-lab-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-emerald-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-semibold text-slate-300 mb-1 block">Hasil Analisis & Catatan Pengamatan:</label>
+                        <textarea id="rptNotes" rows="4" placeholder="Tuliskan ciri-ciri sel, bagian yang terlihat (dinding sel, inti sel, stomata), warna, serta ukuran mikro yang terukur..." class="w-full bg-lab-900 border border-lab-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-emerald-500"></textarea>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- TAB 3: PANDUAN PRAKTIKUM & DIY -->
+        <div id="tabGuide" class="hidden flex-col gap-6">
+            <div class="bg-lab-800 rounded-2xl border border-lab-700/80 p-5 sm:p-6 shadow-xl space-y-6">
+                <div>
+                    <h2 class="font-bold text-lg text-emerald-400 flex items-center gap-2">
+                        <i class="fa-solid fa-book-bookmark"></i> Panduan Praktikum Digital EduScope
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Petunjuk langkah demi langkah pengamatan mikro dan kalibrasi mikrometer.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-lab-900 p-4 rounded-xl border border-lab-700/60 space-y-2">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">1</div>
+                        <h3 class="font-semibold text-sm text-slate-200">Persiapan Preparat</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">Letakkan sampel kaca preparat di bawah lensa kamera. Pastikan lampu LED pencahayaan menyala cukup terang.</p>
+                    </div>
+                    <div class="bg-lab-900 p-4 rounded-xl border border-lab-700/60 space-y-2">
+                        <div class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">2</div>
+                        <h3 class="font-semibold text-sm text-slate-200">Pengaturan Fokus & Filter</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">Gunakan slider Digital Zoom dan Focus Blur. Pilih Pewarnaan Biologi (misal: Methylene Blue) untuk memperjelas dinding sel.</p>
+                    </div>
+                    <div class="bg-lab-900 p-4 rounded-xl border border-lab-700/60 space-y-2">
+                        <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">3</div>
+                        <h3 class="font-semibold text-sm text-slate-200">Pengukuran Mikrometer</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">Aktifkan tombol 'Ukur Jarak', klik dan seret garis dari ujung sel ke ujung lainnya untuk mendapat panjang aktual dalam $\mu m$.</p>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-lab-700/60 space-y-3">
+                    <h3 class="font-semibold text-sm text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-microchip text-emerald-400"></i> Pengaturan ESP32-CAM Wi-Fi (Sistem Murah DIY)
+                    </h3>
+                    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs font-mono text-slate-300 space-y-1.5 overflow-x-auto">
+                        <p><span class="text-emerald-400">// Hubungkan HP/Laptop ke Wi-Fi EduScope:</span></p>
+                        <p>SSID: <span class="text-amber-300">EduScope-WiFi</span> | Password: <span class="text-amber-300">12345678password</span></p>
+                        <p>Default IP Address: <span class="text-cyan-400">http://192.168.4.1/stream</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- PRINT-ONLY LAB REPORT TEMPLATE -->
+    <div id="printReportSection" class="hidden print-only p-8 max-w-4xl mx-auto bg-white text-slate-900">
+        <div class="border-b-2 border-slate-900 pb-4 mb-6 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight">LAPORAN PRAKTIKUM MIKROSKOP DIGITAL</h1>
+                <p class="text-sm font-medium text-slate-600">Platform Pembelajaran Sains EduScope</p>
+            </div>
+            <div class="text-right text-xs text-slate-500">
+                <p>Tanggal Cetak: <span id="prtPrintDate">2026-10-20</span></p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-6 text-sm border p-4 rounded-lg bg-slate-50">
+            <p><strong>Nama Siswa:</strong> <span id="prtStudentName">-</span></p>
+            <p><strong>Kelas/Kelompok:</strong> <span id="prtClassGroup">-</span></p>
+            <p><strong>Tanggal Praktikum:</strong> <span id="prtDate">-</span></p>
+            <p><strong>Sampel Objek:</strong> <span id="prtSampleTitle">-</span></p>
+            <p><strong>Pembesaran:</strong> <span id="prtMagnification">-</span></p>
+        </div>
+
+        <div class="mb-6">
+            <h3 class="font-bold text-sm mb-2 border-b pb-1">HASIL TANGKAPAN MIKROSKOP:</h3>
+            <div id="prtImagesGrid" class="grid grid-cols-2 gap-4">
+                <!-- Selected images injected for print -->
+            </div>
+        </div>
+
+        <div>
+            <h3 class="font-bold text-sm mb-2 border-b pb-1">CATATAN & ANALISIS PEMBELAJARAN:</h3>
+            <p id="prtNotes" class="text-sm leading-relaxed whitespace-pre-wrap text-slate-800 bg-slate-50 p-4 border rounded-lg">-</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- AUDIO EFFECTS (Camera Shutter & Beep using Web Audio API) -->
+    <script>
+        // Web Audio API Sound Generator
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playShutterSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.08);
+        }
+
+        function playBeepSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-rose-600' : 'bg-lab-700';
+            toast.className = `${bgClass} text-white px-4 py-2.5 rounded-xl text-xs font-medium shadow-xl flex items-center gap-2 transition-all duration-300 transform translate-y-4 opacity-0 pointer-events-auto border border-white/10`;
+            toast.innerHTML = `<i class="fa-solid ${type==='success'?'fa-circle-check':type==='error'?'fa-circle-exclamation':'fa-info-circle'}"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+
+    <!-- CORE MICROSCOPE APPLICATION SCRIPT -->
+    <script>
+        // --- GLOBAL STATE ---
+        const state = {
+            activeTab: 'main',
+            cameraMode: 'sim', // 'sim', 'dev', 'esp'
+            simSample: 'onion',
+            filters: {
+                zoom: 10,       // 1x to 100x
+                blur: 0,        // 0 to 10
+                brightness: 100,// 20 to 250
+                contrast: 100,  // 30 to 250
+                saturate: 100,  // 0 to 300
+                stain: 'none'
+            },
+            rotation: 0, // 0, 90, 180, 270
+            flipH: false,
+            overlays: {
+                grid: false,
+                crosshair: false,
+                scale: true,
+                measure: false
+            },
+            pan: { x: 0, y: 0 },
+            isPanning: false,
+            startPan: { x: 0, y: 0 },
+            // Measure tool coordinates
+            measure: {
+                active: false,
+                startX: 0,
+                startY: 0,
+                endX: 0,
+                endY: 0,
+                isDrawing: false,
+                lengthMicrons: 0
+            },
+            // Hardware camera
+            deviceStream: null,
+            facingMode: 'environment',
+            torchActive: false,
+            // Gallery media
+            gallery: [],
+            isRecording: false,
+            mediaRecorder: null,
+            recordedChunks: []
+        };
+
+        // DOM Elements
+        const canvas = document.getElementById('microscopeCanvas');
+        const ctx = canvas.getContext('2d');
+        const deviceVideo = document.getElementById('deviceVideo');
+        const espImgStream = document.getElementById('espImgStream');
+
+        // Sample Procedural Image Generators for Simulator Mode
+        const sampleCanvases = {};
+
+        function generateProceduralSamples() {
+            const samples = ['onion', 'leaf', 'bacteria', 'salt', 'fiber'];
+            samples.forEach(sample => {
+                const c = document.createElement('canvas');
+                c.width = 1000;
+                c.height = 1000;
+                const cx = c.getContext('2d');
+
+                if (sample === 'onion') {
+                    // Onion epidermal cells pattern
+                    cx.fillStyle = '#fdf2f8';
+                    cx.fillRect(0, 0, 1000, 1000);
+                    cx.strokeStyle = '#9d174d';
+                    cx.lineWidth = 4;
+                    for (let y = 0; y < 1000; y += 80) {
+                        cx.beginPath();
+                        for (let x = 0; x < 1000; x += 150) {
+                            const offsetX = (Math.floor(y/80) % 2 === 0) ? 0 : 75;
+                            cx.rect(x + offsetX, y, 150, 80);
+                            // Nucleus
+                            cx.fillStyle = '#be185d';
+                            cx.beginPath();
+                            cx.arc(x + offsetX + 40 + (x%20), y + 40, 12, 0, Math.PI * 2);
+                            cx.fill();
+                        }
+                        cx.stroke();
+                    }
+                } else if (sample === 'leaf') {
+                    // Plant cells with chloroplasts & stomata
+                    cx.fillStyle = '#f0fdf4';
+                    cx.fillRect(0, 0, 1000, 1000);
+                    cx.strokeStyle = '#15803d';
+                    cx.lineWidth = 5;
+                    for (let x = 0; x < 1000; x += 120) {
+                        for (let y = 0; y < 1000; y += 120) {
+                            cx.strokeRect(x, y, 120, 120);
+                            // Chloroplasts
+                            cx.fillStyle = '#22c55e';
+                            for (let k = 0; k < 8; k++) {
+                                cx.beginPath();
+                                cx.arc(x + 20 + (k*12), y + 30 + ((k%3)*20), 8, 0, Math.PI * 2);
+                                cx.fill();
+                            }
+                        }
+                    }
+                } else if (sample === 'bacteria') {
+                    // Bacteria Spirillum
+                    cx.fillStyle = '#0f172a';
+                    cx.fillRect(0, 0, 1000, 1000);
+                    cx.strokeStyle = '#ec4899';
+                    cx.lineWidth = 6;
+                    for (let i = 0; i < 60; i++) {
+                        const rx = Math.random() * 900;
+                        const ry = Math.random() * 900;
+                        cx.beginPath();
+                        cx.moveTo(rx, ry);
+                        cx.quadraticCurveTo(rx + 30, ry + 30, rx + 60, ry);
+                        cx.stroke();
+                    }
+                } else if (sample === 'salt') {
+                    // Salt Cubic Crystals
+                    cx.fillStyle = '#1e293b';
+                    cx.fillRect(0, 0, 1000, 1000);
+                    cx.strokeStyle = '#38bdf8';
+                    cx.lineWidth = 3;
+                    cx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+                    for (let i = 0; i < 25; i++) {
+                        const rx = Math.random() * 800;
+                        const ry = Math.random() * 800;
+                        const size = 60 + Math.random() * 100;
+                        cx.fillRect(rx, ry, size, size);
+                        cx.strokeRect(rx, ry, size, size);
+                    }
+                } else if (sample === 'fiber') {
+                    // Textile / Paper Fiber
+                    cx.fillStyle = '#fafaf9';
+                    cx.fillRect(0, 0, 1000, 1000);
+                    const colors = ['#a8a29e', '#78716c', '#0284c7', '#e11d48'];
+                    for (let i = 0; i < 40; i++) {
+                        cx.strokeStyle = colors[i % colors.length];
+                        cx.lineWidth = 8 + Math.random() * 12;
+                        cx.beginPath();
+                        cx.moveTo(Math.random() * 1000, Math.random() * 1000);
+                        cx.bezierCurveTo(Math.random()*1000, Math.random()*1000, Math.random()*1000, Math.random()*1000, Math.random()*1000, Math.random()*1000);
+                        cx.stroke();
+                    }
+                }
+                sampleCanvases[sample] = c;
+            });
+        }
+
+        // --- INIT & SETUP ---
+        window.addEventListener('load', () => {
+            generateProceduralSamples();
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Canvas Mouse / Touch Listeners for Panning & Measuring
+            setupCanvasInteractions();
+
+            // Render loop
+            requestAnimationFrame(renderLoop);
+
+            // Populate today's date in report form
+            document.getElementById('rptDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('prtPrintDate').innerText = new Date().toISOString().split('T')[0];
+        });
+
+        function resizeCanvas() {
+            const vp = document.getElementById('canvasViewport');
+            canvas.width = vp.clientWidth;
+            canvas.height = vp.clientHeight;
+        }
+
+        // --- MAIN RENDER LOOP ---
+        function renderLoop() {
+            ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Build Filter String
+            let filterStr = `brightness(${state.filters.brightness}%) contrast(${state.filters.contrast}%) saturate(${state.filters.saturate}%)`;
+            if (state.filters.blur > 0) {
+                filterStr += ` blur(${state.filters.blur}px)`;
+            }
+
+            // Biological Stain Filter Overlay Matrix mapping
+            if (state.filters.stain === 'methylene') {
+                filterStr += ' sepia(100%) hue-rotate(180deg) saturate(300%)';
+            } else if (state.filters.stain === 'eosin') {
+                filterStr += ' sepia(100%) hue-rotate(300deg) saturate(250%)';
+            } else if (state.filters.stain === 'fluo') {
+                filterStr += ' sepia(100%) hue-rotate(80deg) saturate(500%) brightness(120%)';
+            } else if (state.filters.stain === 'iodine') {
+                filterStr += ' sepia(100%) hue-rotate(10deg) saturate(200%)';
+            } else if (state.filters.stain === 'mono') {
+                filterStr += ' grayscale(100%) contrast(180%)';
+            } else if (state.filters.stain === 'invert') {
+                filterStr += ' invert(100%)';
+            }
+
+            ctx.filter = filterStr;
+
+            // 2. Transformations (Pan, Zoom, Rotation, Flip)
+            ctx.translate(canvas.width / 2 + state.pan.x, canvas.height / 2 + state.pan.y);
+            ctx.scale(state.filters.zoom / 10, state.filters.zoom / 10);
+            if (state.rotation !== 0) ctx.rotate((state.rotation * Math.PI) / 180);
+            if (state.flipH) ctx.scale(-1, 1);
+
+            // 3. Draw Source Image Frame
+            const drawW = canvas.width;
+            const drawH = canvas.height;
+
+            if (state.cameraMode === 'sim') {
+                const sampleImg = sampleCanvases[state.simSample];
+                if (sampleImg) {
+                    ctx.drawImage(sampleImg, -drawW / 2, -drawH / 2, drawW, drawH);
+                }
+            } else if (state.cameraMode === 'dev') {
+                if (deviceVideo.readyState >= 2) {
+                    ctx.drawImage(deviceVideo, -drawW / 2, -drawH / 2, drawW, drawH);
+                } else {
+                    drawCanvasPlaceholder("Memuat alir kamera perangkat...");
+                }
+            } else if (state.cameraMode === 'esp') {
+                if (espImgStream.complete && espImgStream.naturalWidth !== 0) {
+                    ctx.drawImage(espImgStream, -drawW / 2, -drawH / 2, drawW, drawH);
+                } else {
+                    drawCanvasPlaceholder("Menghubungkan ke ESP32-CAM...");
+                }
+            }
+
+            ctx.restore();
+
+            // 4. Overlays (Scale Bar, Grid, Crosshair, Measure)
+            drawCanvasOverlays();
+
+            requestAnimationFrame(renderLoop);
+        }
+
+        function drawCanvasPlaceholder(text) {
+            ctx.fillStyle = '#64748b';
+            ctx.font = '14px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(text, 0, 0);
+        }
+
+        // --- OVERLAY DRAWING (Grid, Micrometer, Measure Tool) ---
+        function drawCanvasOverlays() {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Hemocytometer Grid Overlay
+            if (state.overlays.grid) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(16, 185, 129, 0.35)';
+                ctx.lineWidth = 1;
+                const gridSize = 40;
+                for (let x = 0; x < w; x += gridSize) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+                }
+                for (let y = 0; y < h; y += gridSize) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            // Crosshair Reticle Overlay
+            if (state.overlays.crosshair) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
+                // Center circles
+                ctx.beginPath(); ctx.arc(w / 2, h / 2, 20, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(w / 2, h / 2, 40, 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
+            }
+
+            // Dynamic Scale Bar (Micrometer µm)
+            if (state.overlays.scale) {
+                ctx.save();
+                // Scale factor: 10x digital zoom = ~100µm bar
+                const currentZoom = state.filters.zoom;
+                const micronValue = Math.round(1000 / currentZoom); // Dynamic micron length
+                const barPixelWidth = 120; // fixed pixels length on screen
+
+                const posX = 20;
+                const posY = h - 30;
+
+                ctx.fillStyle = 'rgba(11, 19, 41, 0.75)';
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 3;
+                ctx.fillRect(posX - 10, posY - 25, barPixelWidth + 20, 35);
+                ctx.strokeRect(posX - 10, posY - 25, barPixelWidth + 20, 35);
+
+                ctx.beginPath();
+                ctx.moveTo(posX, posY);
+                ctx.lineTo(posX + barPixelWidth, posY);
+                ctx.stroke();
+
+                // Caps
+                ctx.beginPath(); ctx.moveTo(posX, posY - 5); ctx.lineTo(posX, posY + 5); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(posX + barPixelWidth, posY - 5); ctx.lineTo(posX + barPixelWidth, posY + 5); ctx.stroke();
+
+                ctx.fillStyle = '#6ee7b7';
+                ctx.font = 'bold 11px JetBrains Mono, monospace';
+                ctx.fillText(`${micronValue} µm`, posX + barPixelWidth / 2 - 20, posY - 8);
+                ctx.restore();
+            }
+
+            // Interactive Measure Tool Line
+            if (state.overlays.measure && (state.measure.startX !== 0 || state.measure.endX !== 0)) {
+                ctx.save();
+                ctx.strokeStyle = '#f59e0b'; // Amber
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash([6, 4]);
+
+                ctx.beginPath();
+                ctx.moveTo(state.measure.startX, state.measure.startY);
+                ctx.lineTo(state.measure.endX, state.measure.endY);
+                ctx.stroke();
+
+                // Draw Endpoints
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath(); ctx.arc(state.measure.startX, state.measure.startY, 5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(state.measure.endX, state.measure.endY, 5, 0, Math.PI * 2); ctx.fill();
+
+                // Calculate distance in pixels and convert to µm
+                const dx = state.measure.endX - state.measure.startX;
+                const dy = state.measure.endY - state.measure.startY;
+                const pixelDist = Math.sqrt(dx * dx + dy * dy);
+
+                // Conversion formula based on zoom level
+                const micronDist = Math.round((pixelDist / 120) * (1000 / state.filters.zoom));
+                state.measure.lengthMicrons = micronDist;
+
+                // Label Text
+                const midX = (state.measure.startX + state.measure.endX) / 2;
+                const midY = (state.measure.startY + state.measure.endY) / 2;
+
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+                ctx.fillRect(midX - 35, midY - 15, 70, 22);
+                ctx.strokeStyle = '#f59e0b';
+                ctx.strokeRect(midX - 35, midY - 15, 70, 22);
+
+                ctx.fillStyle = '#fbbf24';
+                ctx.font = 'bold 11px JetBrains Mono, monospace';
+                ctx.fillText(`${micronDist} µm`, midX - 25, midY + 1);
+
+                document.getElementById('measureResultText').innerText = `Terukur: ${micronDist} µm`;
+                ctx.restore();
+            }
+        }
+
+        // --- INTERACTION HANDLERS (Pan & Measure) ---
+        function setupCanvasInteractions() {
+            canvas.addEventListener('mousedown', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                if (state.overlays.measure) {
+                    state.measure.isDrawing = true;
+                    state.measure.startX = x;
+                    state.measure.startY = y;
+                    state.measure.endX = x;
+                    state.measure.endY = y;
+                } else {
+                    state.isPanning = true;
+                    state.startPan = { x: e.clientX - state.pan.x, y: e.clientY - state.pan.y };
+                }
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                if (state.overlays.measure && state.measure.isDrawing) {
+                    state.measure.endX = x;
+                    state.measure.endY = y;
+                } else if (state.isPanning) {
+                    state.pan.x = e.clientX - state.startPan.x;
+                    state.pan.y = e.clientY - state.startPan.y;
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                state.isPanning = false;
+                if (state.overlays.measure && state.measure.isDrawing) {
+                    state.measure.isDrawing = false;
+                    playBeepSound();
+                }
+            });
+
+            // Touch support for mobile
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.touches[0].clientX - rect.left;
+                    const y = e.touches[0].clientY - rect.top;
+
+                    if (state.overlays.measure) {
+                        state.measure.isDrawing = true;
+                        state.measure.startX = x;
+                        state.measure.startY = y;
+                        state.measure.endX = x;
+                        state.measure.endY = y;
+                    } else {
+                        state.isPanning = true;
+                        state.startPan = { x: e.touches[0].clientX - state.pan.x, y: e.touches[0].clientY - state.pan.y };
+                    }
+                }
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.touches[0].clientX - rect.left;
+                    const y = e.touches[0].clientY - rect.top;
+
+                    if (state.overlays.measure && state.measure.isDrawing) {
+                        state.measure.endX = x;
+                        state.measure.endY = y;
+                    } else if (state.isPanning) {
+                        state.pan.x = e.touches[0].clientX - state.startPan.x;
+                        state.pan.y = e.touches[0].clientY - state.startPan.y;
+                    }
+                }
+            });
+
+            canvas.addEventListener('touchend', () => {
+                state.isPanning = false;
+                state.measure.isDrawing = false;
+            });
+        }
+
+        // --- FILTER CONTROLS & UPDATES ---
+        function updateFilter(key, val) {
+            if (key === 'zoom') {
+                state.filters.zoom = parseFloat(val);
+                document.getElementById('valZoom').innerText = `${parseFloat(val).toFixed(1)}x`;
+                document.getElementById('magIndicator').innerText = `${Math.round(parseFloat(val) * 10)}x Total`;
+                document.getElementById('rptMagnification').value = `${Math.round(parseFloat(val) * 10)}x Total`;
+            } else if (key === 'blur') {
+                state.filters.blur = parseFloat(val);
+                document.getElementById('valFocus').innerText = `${val} px`;
+            } else if (key === 'brightness') {
+                state.filters.brightness = val;
+                document.getElementById('valBrightness').innerText = `${val}%`;
+            } else if (key === 'contrast') {
+                state.filters.contrast = val;
+                document.getElementById('valContrast').innerText = `${val}%`;
+            } else if (key === 'saturate') {
+                state.filters.saturate = val;
+                document.getElementById('valSaturate').innerText = `${val}%`;
+            } else if (key === 'stain') {
+                state.filters.stain = val;
+            }
+        }
+
+        function resetImageFilters() {
+            state.filters = { zoom: 10, blur: 0, brightness: 100, contrast: 100, saturate: 100, stain: 'none' };
+            state.pan = { x: 0, y: 0 };
+            state.rotation = 0;
+            state.flipH = false;
+
+            document.getElementById('sliderZoom').value = 10;
+            document.getElementById('sliderFocus').value = 0;
+            document.getElementById('sliderBrightness').value = 100;
+            document.getElementById('sliderContrast').value = 100;
+            document.getElementById('sliderSaturate').value = 100;
+            document.getElementById('stainSelect').value = 'none';
+
+            updateFilter('zoom', 10);
+            updateFilter('blur', 0);
+            updateFilter('brightness', 100);
+            updateFilter('contrast', 100);
+            updateFilter('saturate', 100);
+            showToast("Pengolahan citra direset", "info");
+        }
+
+        function rotateCanvas() {
+            state.rotation = (state.rotation + 90) % 360;
+        }
+
+        function toggleFlip(dir) {
+            if (dir === 'h') state.flipH = !state.flipH;
+        }
+
+        function resetCanvasTransform() {
+            state.pan = { x: 0, y: 0 };
+            state.filters.zoom = 10;
+            document.getElementById('sliderZoom').value = 10;
+            updateFilter('zoom', 10);
+        }
+
+        function toggleOverlay(type) {
+            state.overlays[type] = !state.overlays[type];
+            const btn = document.getElementById(`btn${type.charAt(0).toUpperCase() + type.slice(1)}`);
+            if (state.overlays[type]) {
+                btn.className = "px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-600 text-white flex items-center gap-1.5 transition shadow";
+            } else {
+                btn.className = "px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition";
+            }
+
+            if (type === 'measure') {
+                const banner = document.getElementById('measureBanner');
+                if (state.overlays.measure) {
+                    banner.classList.remove('hidden');
+                } else {
+                    banner.classList.add('hidden');
+                }
+            }
+        }
+
+        // --- CAMERA MODES & HARDWARE HANDLING ---
+        function setCameraMode(mode) {
+            state.cameraMode = mode;
+            stopHardwareCamera();
+
+            // UI Buttons
+            const btnSim = document.getElementById('srcSimBtn');
+            const btnDev = document.getElementById('srcDevBtn');
+            const btnEsp = document.getElementById('srcEspBtn');
+
+            btnSim.className = mode === 'sim' ? 'py-2 text-xs font-medium rounded-lg transition text-slate-200 bg-lab-700/80 shadow flex flex-col items-center gap-1' : 'py-2 text-xs font-medium rounded-lg transition text-slate-400 hover:text-slate-200 flex flex-col items-center gap-1';
+            btnDev.className = mode === 'dev' ? 'py-2 text-xs font-medium rounded-lg transition text-slate-200 bg-lab-700/80 shadow flex flex-col items-center gap-1' : 'py-2 text-xs font-medium rounded-lg transition text-slate-400 hover:text-slate-200 flex flex-col items-center gap-1';
+            btnEsp.className = mode === 'esp' ? 'py-2 text-xs font-medium rounded-lg transition text-slate-200 bg-lab-700/80 shadow flex flex-col items-center gap-1' : 'py-2 text-xs font-medium rounded-lg transition text-slate-400 hover:text-slate-200 flex flex-col items-center gap-1';
+
+            document.getElementById('simOptions').style.display = mode === 'sim' ? 'block' : 'none';
+            document.getElementById('devOptions').style.display = mode === 'dev' ? 'block' : 'none';
+            document.getElementById('espOptions').style.display = mode === 'esp' ? 'block' : 'none';
+
+            const statusText = document.getElementById('statusText');
+            if (mode === 'sim') {
+                statusText.innerText = "Simulator";
+                showToast("Beralih ke Simulator Sampel", "info");
+            } else if (mode === 'dev') {
+                statusText.innerText = "Kamera HP/Webcam";
+                initHardwareCamera();
+            } else if (mode === 'esp') {
+                statusText.innerText = "ESP32-CAM Wi-Fi";
+                connectESP32();
+            }
+        }
+
+        function changeSample(val) {
+            state.simSample = val;
+            const names = {
+                onion: 'Sel Epidermis Bawang Merah',
+                leaf: 'Kloroplas & Stomata Daun',
+                bacteria: 'Bakteri Spirillum',
+                salt: 'Kristal Garam (NaCl)',
+                fiber: 'Serat Kain Katun'
+            };
+            document.getElementById('sampleNameDisplay').innerText = names[val] || val;
+            document.getElementById('rptSampleTitle').value = names[val] || val;
+            showToast(`Sampel diganti: ${names[val]}`, "success");
+        }
+
+        async function initHardwareCamera() {
+            try {
+                stopHardwareCamera();
+                const constraints = {
+                    video: {
+                        facingMode: state.facingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+                state.deviceStream = await navigator.mediaDevices.getUserMedia(constraints);
+                deviceVideo.srcObject = state.deviceStream;
+                await deviceVideo.play();
+
+                populateDeviceList();
+                showToast("Kamera perangkat terhubung", "success");
+            } catch (err) {
+                console.error("Camera Error:", err);
+                showToast("Gagal mengakses kamera: " + err.message, "error");
+            }
+        }
+
+        async function populateDeviceList() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoInputs = devices.filter(d => d.kind === 'videoinput');
+                const sel = document.getElementById('devDeviceSelect');
+                sel.innerHTML = '';
+                videoInputs.forEach((dev, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = dev.deviceId;
+                    opt.text = dev.label || `Kamera ${idx + 1}`;
+                    sel.appendChild(opt);
+                });
+            } catch (err) {
+                console.warn(err);
+            }
+        }
+
+        function switchDeviceCamera(deviceId) {
+            stopHardwareCamera();
+            navigator.mediaDevices.getUserMedia({
+                video: { deviceId: { exact: deviceId } }
+            }).then(stream => {
+                state.deviceStream = stream;
+                deviceVideo.srcObject = stream;
+                deviceVideo.play();
+            });
+        }
+
+        function toggleFlipCamera() {
+            state.facingMode = (state.facingMode === 'environment') ? 'user' : 'environment';
+            initHardwareCamera();
+        }
+
+        async function toggleTorch() {
+            if (!state.deviceStream) return;
+            const track = state.deviceStream.getVideoTracks()[0];
+            try {
+                state.torchActive = !state.torchActive;
+                await track.applyConstraints({
+                    advanced: [{ torch: state.torchActive }]
+                });
+                showToast(`Flash LED: ${state.torchActive ? 'ON' : 'OFF'}`, "info");
+            } catch (e) {
+                showToast("Perangkat tidak mendukung Flash LED", "error");
+            }
+        }
+
+        function changeResolution(res) {
+            initHardwareCamera();
+        }
+
+        function stopHardwareCamera() {
+            if (state.deviceStream) {
+                state.deviceStream.getTracks().forEach(t => t.stop());
+                state.deviceStream = null;
+            }
+        }
+
+        function connectESP32() {
+            const url = document.getElementById('espUrlInput').value;
+            espImgStream.src = url;
+            showToast("Menghubungkan ke Stream ESP32...", "info");
+        }
+
+        // --- CAPTURE & RECORDING & GALLERY ---
+        function captureSnapshot() {
+            playShutterSound();
+            const includeOverlay = document.getElementById('chkIncludeOverlay').checked;
+
+            // Create temporary canvas
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            const tCtx = tempCanvas.getContext('2d');
+
+            // Draw current view
+            tCtx.drawImage(canvas, 0, 0);
+
+            const dataUrl = tempCanvas.toDataURL('image/png');
+            const item = {
+                id: Date.now(),
+                type: 'image',
+                src: dataUrl,
+                title: document.getElementById('sampleNameDisplay').innerText,
+                date: new Date().toLocaleTimeString()
+            };
+
+            state.gallery.push(item);
+            renderGallery();
+            showToast("Foto berhasil ditangkap & disimpan ke Galeri!", "success");
+        }
+
+        function toggleVideoRecord() {
+            if (!state.isRecording) {
+                startVideoRecord();
+            } else {
+                stopVideoRecord();
+            }
+        }
+
+        function startVideoRecord() {
+            state.recordedChunks = [];
+            const stream = canvas.captureStream(30); // 30 FPS
+            state.mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+
+            state.mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) state.recordedChunks.push(e.data);
+            };
+
+            state.mediaRecorder.onstop = () => {
+                const blob = new Blob(state.recordedChunks, { type: 'video/webm' });
+                const videoUrl = URL.createObjectURL(blob);
+                const item = {
+                    id: Date.now(),
+                    type: 'video',
+                    src: videoUrl,
+                    title: "Rekaman Video Mikro",
+                    date: new Date().toLocaleTimeString()
+                };
+                state.gallery.push(item);
+                renderGallery();
+                showToast("Video rekaman disimpan ke Galeri!", "success");
+            };
+
+            state.mediaRecorder.start();
+            state.isRecording = true;
+
+            // UI Update
+            document.getElementById('recDot').classList.add('animate-ping');
+            document.getElementById('recBtnText').innerText = "Berhenti Merekam";
+            showToast("Merekam video...", "info");
+        }
+
+        function stopVideoRecord() {
+            if (state.mediaRecorder) {
+                state.mediaRecorder.stop();
+                state.isRecording = false;
+                document.getElementById('recDot').classList.remove('animate-ping');
+                document.getElementById('recBtnText').innerText = "Rekam Video";
+            }
+        }
+
+        function renderGallery() {
+            const grid = document.getElementById('galleryGrid');
+            const badge = document.getElementById('galleryBadge');
+
+            if (state.gallery.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-12 text-center text-slate-500">
+                        <i class="fa-solid fa-box-open text-4xl mb-2 opacity-40"></i>
+                        <p class="text-xs">Belum ada foto atau video yang ditangkap.</p>
+                    </div>`;
+                badge.classList.add('hidden');
+                return;
+            }
+
+            badge.innerText = state.gallery.length;
+            badge.classList.remove('hidden');
+
+            grid.innerHTML = '';
+            state.gallery.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "bg-lab-900 rounded-xl overflow-hidden border border-lab-700/60 shadow flex flex-col group";
+
+                if (item.type === 'image') {
+                    card.innerHTML = `
+                        <div class="relative h-28 bg-black overflow-hidden">
+                            <img src="${item.src}" class="w-full h-full object-cover group-hover:scale-105 transition">
+                        </div>
+                        <div class="p-2 flex-1 flex flex-col justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-200 truncate">${item.title}</p>
+                                <p class="text-[10px] text-slate-400">${item.date}</p>
+                            </div>
+                            <div class="flex gap-1 mt-2">
+                                <a href="${item.src}" download="EduScope_${item.id}.png" class="flex-1 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 text-[10px] font-semibold rounded text-center">Download</a>
+                                <button onclick="deleteGalleryItem(${item.id})" class="px-2 py-1 bg-rose-500/20 text-rose-400 text-[10px] rounded hover:bg-rose-500/40"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>`;
+                } else {
+                    card.innerHTML = `
+                        <div class="relative h-28 bg-black overflow-hidden flex items-center justify-center">
+                            <video src="${item.src}" class="w-full h-full object-cover"></video>
+                            <i class="fa-solid fa-circle-play absolute text-white text-2xl opacity-80"></i>
+                        </div>
+                        <div class="p-2 flex-1 flex flex-col justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-200 truncate">${item.title}</p>
+                                <p class="text-[10px] text-slate-400">${item.date}</p>
+                            </div>
+                            <div class="flex gap-1 mt-2">
+                                <a href="${item.src}" download="EduScope_Video_${item.id}.webm" class="flex-1 py-1 bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-400 text-[10px] font-semibold rounded text-center">Download MP4/WebM</a>
+                                <button onclick="deleteGalleryItem(${item.id})" class="px-2 py-1 bg-rose-500/20 text-rose-400 text-[10px] rounded hover:bg-rose-500/40"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>`;
+                }
+                grid.appendChild(card);
+            });
+        }
+
+        function deleteGalleryItem(id) {
+            state.gallery = state.gallery.filter(i => i.id !== id);
+            renderGallery();
+            showToast("Item dihapus", "info");
+        }
+
+        function clearAllGallery() {
+            if (confirm("Hapus semua media di galeri?")) {
+                state.gallery = [];
+                renderGallery();
+                showToast("Galeri dibersihkan", "info");
+            }
+        }
+
+        // --- TAB NAVIGATION ---
+        function switchTab(tab) {
+            state.activeTab = tab;
+            document.getElementById('tabMain').classList.add('hidden');
+            document.getElementById('tabGallery').classList.add('hidden');
+            document.getElementById('tabGuide').classList.add('hidden');
+
+            document.getElementById('tabMainBtn').className = "flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200";
+            document.getElementById('tabGalleryBtn').className = "flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200";
+            document.getElementById('tabGuideBtn').className = "flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200";
+
+            if (tab === 'main') {
+                document.getElementById('tabMain').classList.remove('hidden');
+                document.getElementById('tabMainBtn').className = "flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 bg-emerald-600 text-white shadow-md";
+            } else if (tab === 'gallery') {
+                document.getElementById('tabGallery').classList.remove('hidden');
+                document.getElementById('tabGalleryBtn').className = "flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 bg-emerald-600 text-white shadow-md";
+            } else if (tab === 'guide') {
+                document.getElementById('tabGuide').classList.remove('hidden');
+                document.getElementById('tabGuideBtn').className = "flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 bg-emerald-600 text-white shadow-md";
+            }
+        }
+
+        // --- LAB REPORT GENERATOR & PRINTING ---
+        function generateLabReportPrint() {
+            // Fill Print Section
+            document.getElementById('prtStudentName').innerText = document.getElementById('rptStudentName').value || 'Budi Santoso';
+            document.getElementById('prtClassGroup').innerText = document.getElementById('rptClassGroup').value || 'XI IPA 2';
+            document.getElementById('prtDate').innerText = document.getElementById('rptDate').value || new Date().toISOString().split('T')[0];
+            document.getElementById('prtSampleTitle').innerText = document.getElementById('rptSampleTitle').value || 'Pengamatan Struktur Sel';
+            document.getElementById('prtMagnification').innerText = document.getElementById('rptMagnification').value || '100x Total';
+            document.getElementById('prtNotes').innerText = document.getElementById('rptNotes').value || 'Tidak ada catatan analisis.';
+
+            const imagesGrid = document.getElementById('prtImagesGrid');
+            imagesGrid.innerHTML = '';
+
+            const imageItems = state.gallery.filter(i => i.type === 'image').slice(0, 4);
+            if (imageItems.length === 0) {
+                // Take current canvas snapshot if gallery empty
+                const img = document.createElement('img');
+                img.src = canvas.toDataURL();
+                img.className = "w-full h-40 object-cover border rounded";
+                imagesGrid.appendChild(img);
+            } else {
+                imageItems.forEach(item => {
+                    const img = document.createElement('img');
+                    img.src = item.src;
+                    img.className = "w-full h-40 object-cover border rounded";
+                    imagesGrid.appendChild(img);
+                });
+            }
+
+            window.print();
+        }
+    </script>
+</body>
+</html>
